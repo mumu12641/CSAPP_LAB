@@ -113,30 +113,3 @@ int main(int argc, char *argv[])
     
     return 0;
 }
-
-
-void func4(int x = 14,int y = 0 ,int z){
-    int result = x;
-    result = result - y;
-    int tmp = result;
-    result += (tmp>>31);
-    result >>= 1;
-
-    long a = result + y;
-
-    if (a <= z){
-        result = 0;
-        if(a >= z){
-            return result;
-        }else{
-            y = a + 1;
-            func4(x,y,z);
-        }
-    }else{
-        x = a -1;
-        func(x,y,z);
-
-    }
-    return result;
-
-}
