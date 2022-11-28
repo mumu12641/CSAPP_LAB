@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
     printf("That's number 2.  Keep going!\n");
 
     /* I guess this is too easy so far.  Some more complex code will
-     * confuse people. */
+     * confuse people. */10
     input = read_line();
     phase_3(input);
     phase_defused();
