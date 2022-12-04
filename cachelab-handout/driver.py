@@ -52,9 +52,10 @@ def main():
     print("Running ./test-csim")
     p = subprocess.Popen("./test-csim", 
                          shell=True, stdout=subprocess.PIPE)
-    stdout_data = p.communicate()[0]
+    stdout_data = p.communicate()[0].decode('utf-8')
 
     # Emit the output from test-csim
+    # print(stdout_data)
     stdout_data = re.split('\n', stdout_data)
     for line in stdout_data:
         if re.match("TEST_CSIM_RESULTS", line):
@@ -68,21 +69,21 @@ def main():
     print("Running ./test-trans -M 32 -N 32")
     p = subprocess.Popen("./test-trans -M 32 -N 32 | grep TEST_TRANS_RESULTS", 
                          shell=True, stdout=subprocess.PIPE)
-    stdout_data = p.communicate()[0]
+    stdout_data = p.communicate()[0].decode('utf-8')
     result32 = re.findall(r'(\d+)', stdout_data)
     
     # 64x64 transpose
     print("Running ./test-trans -M 64 -N 64")
     p = subprocess.Popen("./test-trans -M 64 -N 64 | grep TEST_TRANS_RESULTS", 
                          shell=True, stdout=subprocess.PIPE)
-    stdout_data = p.communicate()[0]
+    stdout_data = p.communicate()[0].decode('utf-8')
     result64 = re.findall(r'(\d+)', stdout_data)
     
     # 61x67 transpose
     print("Running ./test-trans -M 61 -N 67")
     p = subprocess.Popen("./test-trans -M 61 -N 67 | grep TEST_TRANS_RESULTS", 
                          shell=True, stdout=subprocess.PIPE)
-    stdout_data = p.communicate()[0]
+    stdout_data = p.communicate()[0].decode('utf-8')
     result61 = re.findall(r'(\d+)', stdout_data)
     
     # Compute the scores for each step
@@ -94,6 +95,9 @@ def main():
     trans32_score = computeMissScore(miss32, 300, 600, maxscore['trans32']) * int(result32[0])
     trans64_score = computeMissScore(miss64, 1300, 2000, maxscore['trans64']) * int(result64[0])
     trans61_score = computeMissScore(miss61, 2000, 3000, maxscore['trans61']) * int(result61[0])
+    # print(csim_cscore[0])
+    # print(csim_cscore)
+    csim_cscore = list(csim_cscore)
     total_score = csim_cscore[0] + trans32_score + trans64_score + trans61_score
 
     # Summarize the results

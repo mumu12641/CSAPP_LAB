@@ -136,7 +136,7 @@ void open_trace_file()
     char operation;
     unsigned int address;
     int size;
-    while(fscanf(fp, " %c %xu,%d\n", &operation, &address, &size) > 0)
+    while(fscanf(fp, " %c %x,%d", &operation, &address, &size) > 0)
     {
         switch(operation)
         {
