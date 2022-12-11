@@ -100,7 +100,17 @@ static char *default_tracefiles[] = {
     DEFAULT_TRACEFILES, NULL
 };
 
-
+// team_t team = {
+//     /* Team name */
+//     "南通聚集地",
+//     /* First member's full name */
+//     "Peng Bin",
+//     /* First member's email address */
+//     "pengbin020813@gmail.com",
+//     /* Second member's full name (leave blank if none) */
+//     "",
+//     /* Second member's email address (leave blank if none) */
+//     ""};
 /********************* 
  * Function prototypes 
  *********************/
