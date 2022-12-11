@@ -69,8 +69,7 @@ line:vm:mm:hdrp #define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - DSIZE)
 
 /* Given block ptr bp, compute address of next and previous blocks */
 #define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char *)(bp)-WSIZE))) //
-line:vm:mm:nextblkp #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char
-*)(bp)-DSIZE))) // line:vm:mm:prevblkp
+line:vm:mm:nextblkp #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char*)(bp)-DSIZE))) // line:vm:mm:prevblkp
 
 // 获取前驱
 #define GET_PRED(bp) GET(bp)
@@ -78,11 +77,9 @@ line:vm:mm:nextblkp #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char
 // 获取后继
 #define GET_SUCC(bp) GET((unsigned int *)(bp) + 1)
 #define SET_SUCC(bp,val) PUT(GET_SUCC(bp),val)
-// #define GET_SUCC(bp) ((unsigned int *)(unsigned int)(GET((unsigned int
-*)bp + 1)))
+// #define GET_SUCC(bp) ((unsigned int *)(unsigned int)(GET((unsigned int*)bp + 1)))
 
-// #define GET_HEAD(num) ((unsigned int *)(int)(GET(heap_listp + WSIZE *
-num)))
+// #define GET_HEAD(num) ((unsigned int *)(int)(GET(heap_listp + WSIZE *num)))
 /* $end mallocmacros */
 
 char *heap_listp = 0; /* Pointer to first block */

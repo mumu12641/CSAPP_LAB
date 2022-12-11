@@ -38,11 +38,14 @@
 #define GET_ALLOC(p) (GET(p) & 0x1)
 /* Given block ptr bp, compute address of its header and footer*/
 #define HDRP(bp) ((char *)(bp)-WSIZE)
+// GET_SIZE 包括了头尾和载荷加在一起
 #define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - DSIZE)
 /* Given block ptr bp, compute address of next and prev blocks */
 #define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)))
-#define PREV_BLKP(bp) ((char *)(bp)-GET_SIZE((char *)(bp)-DSIZE))
+#define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE((char *)(bp)-DSIZE))
 /* Get and set prev or next pointer from address p */
+// 获得后继和前驱 
+// 后继和前驱其实就是一个32位无符号整数 表示地址值
 #define GET_PREV(p) (*(unsigned int *)(p))
 #define SET_PREV(p, prev) (*(unsigned int *)(p) = (prev))
 #define GET_NEXT(p) (*((unsigned int *)(p) + 1))
@@ -132,6 +135,7 @@ static void insert(void *bp) {
   //     SET_PREV(bp,NULL);
   // }
 
+    // 按 size 的大小 insert
   while (next != NULL) {
     if (GET_SIZE(HDRP(next)) >= GET_SIZE(HDRP(bp))) {
       break;
@@ -247,7 +251,7 @@ static void place(void *bp, size_t asize) {
 }
 
 int mm_init(void) {
-  if ((heap_listp = mem_sbrk(12 * WSIZE)) == (void *)-1)
+  if ((heap_listp = mem_sbrk((9 + 3) * WSIZE)) == (void *)-1)
     return -1;
   PUT(heap_listp, 0);                             // block size <= 32
   PUT(heap_listp + (1 * WSIZE), 0);               // block size <= 64
@@ -318,8 +322,10 @@ void *mm_realloc(void *ptr, size_t size) {
     return NULL;
   size = GET_SIZE(HDRP(oldptr));
   copySize = GET_SIZE(HDRP(newptr));
+  // 拿到小的 Size
   if (size < copySize)
     copySize = size;
+  // 这里减去 WSIZE 是给 foot 部位留下位置！
   memcpy(newptr, oldptr, copySize - WSIZE);
   mm_free(oldptr);
   return newptr;
