@@ -25,17 +25,14 @@ typedef struct _cache_obj {
     char uri[MAXLINE];
     char respBody[MAX_OBJECT_SIZE];
     int respBodyLen;
-    // char respHeader[MAX_OBJECT_SIZE];
-    // int respHeaderLen;
     int LRU;
-    struct _cache_obj *prev;
-    struct _cache_obj *next;
 
 } obj;
 
 typedef struct _cache {
-    obj *head;
-    obj *tail;
+    // obj *head;
+    // obj *tail;
+    obj **objs;
     int num;
 } cache;
 
@@ -67,11 +64,9 @@ int main(int argc, char **argv) {
     pthread_t tid;
     struct sockaddr_storage clientaddr;
 
-    // proxy_cache.num = 0;
-    // memset(&proxy_cache, 0, sizeof(cache));
-    
+
     init_cache(&proxy_cache);
-    Sem_init(&mutex, 0, 3);
+    Sem_init(&mutex, 0, 1);
     Sem_init(&w, 0, 1);
 
     if (argc != 2) {
@@ -96,18 +91,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 void init_cache(cache *c) {
-    c->head = Malloc(sizeof(obj));
-    c->head->flag = 0;
-    c->head->prev = NULL;
-    c->head->next = NULL;
-
-    c->tail = Malloc(sizeof(obj));
-    c->tail->flag = 0;
-    c->tail->prev = NULL;
-    c->tail->next = NULL;
-
-    c->head->next = c->tail;
-    c->tail->prev = c->head;
+    c->objs = Malloc(sizeof(obj *) * 10);
 
     c->num = 0;
 }
@@ -122,7 +106,7 @@ void *thread(void *vargp) {
 
 void doit(int fd) {
     char buf[MAXLINE], buf_client[MAXLINE], method[MAXLINE], uri[MAXLINE],
-        version[MAXLINE];
+        version[MAXLINE],tmp_uri[MAXLINE];
 
     request *re = (request *)malloc(sizeof(request));
     memset(re, 0, sizeof(request));
@@ -133,14 +117,15 @@ void doit(int fd) {
     replaceHTTPVersion(buf);
     printf("%s", buf);
     sscanf(buf, "%s %s %s", method, uri, version);
+    strcpy(tmp_uri, uri);
 
     obj *pointer = search_cache(uri, fd);
-    // if (pointer != NULL) {
-    //     printf("cache hit\n");
-    //     Rio_writen(fd, pointer->respBody, pointer->respBodyLen);
-    //     return;
-    // }
-    // printf("cache miss\n");
+    if (pointer != NULL) {
+        printf("cache hit\n");
+        Rio_writen(fd, pointer->respBody, pointer->respBodyLen);
+        return;
+    }
+    printf("cache miss\n");
     if (strcasecmp(method, "GET")) {
         clienterror(fd, method, "501", "Not Implemented",
                     "Tiny does not implement this method");
@@ -168,102 +153,67 @@ void doit(int fd) {
     char tinyResponse[MAXLINE];
     char *tinyResponseP = tinyResponse;
 
-    // int n, totalBytes = 0;
-    // obj *o = Malloc(sizeof(obj));
-    // o->flag = '0';
-    // strcpy(o->uri, uri);
-    // *o->respHeader = 0;
-    // *o->respBody = 0;
-    // while ((n = rio_readlineb(&rio_client, tinyResponse, MAXLINE)) != 0) {
-    //     Rio_writen(fd, tinyResponse, n);
-
-    //     if (strcmp(tinyResponse, "\r\n") == 0)  // prepare for body part
-    //         break;
-
-    //     strcat(o->respHeader, tinyResponse);
-    //     totalBytes += n;
-    // }
-    // printf("head:%s\n", o->respHeader);
-    // o->respHeaderLen = totalBytes;
-    // totalBytes = 0;
-    // while ((n = rio_readlineb(&rio_client, tinyResponse, MAXLINE)) != 0) {
-    //     Rio_writen(fd, tinyResponse, n);
-    //     totalBytes += n;
-    //     strcat(o->respBody, tinyResponse);
-    // }
-    // o->respBodyLen = totalBytes;
-    // if (totalBytes >= MAX_OBJECT_SIZE) {
-    //     Free(o);
-    //     return;
-    // }
-    // printf("body:%s\n", o->respBody);
-    // P(&w);
-    // insert_cache(o);
-    // V(&w);
-
-
-
     int n;
     while ((n = Rio_readnb(&rio_client, tinyResponse, MAXLINE)) != 0) {
         Rio_writen(fd, tinyResponse, n);
         P(&w);
-        obj *o = (obj * ) Malloc(sizeof(obj));
-        o->flag = 1;
+        obj *o = (obj *)Malloc(sizeof(obj));
+        // o->flag = 1;
         strcpy(o->respBody, tinyResponse);
+        strcpy(o->uri, tmp_uri);
         o->respBodyLen = n;
+        o->LRU = 0;
+        printf("insert cache %s ", o->uri);
         insert_cache(o);
+        printf("size %d     cache num %d\n", o->respBodyLen,proxy_cache.num);
         V(&w);
     }
 }
 
 obj *search_cache(char *uri, int fd) {
-    printf("searching\n");
     P(&mutex);
-    printf("searching\n");
-
     read_cnt++;
     if (read_cnt == 1) {
         P(&w);
     }
     V(&mutex);
-    obj *p = proxy_cache.head->next;
+    obj *p = NULL;
     rio_t rio;
     Rio_readinitb(&rio, fd);
-    while (p->flag != 0) {
-        if (strcmp(uri, p->uri) ==  0) {
-            break;
+    for (int i = 0; i < proxy_cache.num; i++) {
+        printf("%s  %s\n", proxy_cache.objs[i]->uri,uri);
+        if (strcmp(uri, proxy_cache.objs[i]->uri) == 0) {
+            p = proxy_cache.objs[i];
+            p->LRU = 0;
+        } else {
+            (proxy_cache.objs[i]->LRU)++;
         }
-        p = p->next;
     }
-
     P(&mutex);
     read_cnt--;
     if (read_cnt == 0) {
         V(&w);
     }
     V(&mutex);
-    if (p == proxy_cache.head->next){
-        return NULL;
-    }
     return p;
 }
 void insert_cache(obj *o) {
-    while (o->respBodyLen + cacheSize > MAX_CACHE_SIZE &&
-           proxy_cache.head->next != proxy_cache.tail) {
-        obj *last = proxy_cache.tail->prev;
-        last->next->prev = last->prev;
-        last->prev->next = last->next;
+    if (o->respBodyLen + cacheSize > MAX_CACHE_SIZE) {
+        int max = 0;
+        int max_index = 0;
+        for (int i = 0; i < proxy_cache.num; i++) {
+            if (proxy_cache.objs[i]->LRU > max) {
+                max = proxy_cache.objs[i]->LRU;
+                max_index = i;
+            }
+        }
+        Free(proxy_cache.objs[max_index]);
+        proxy_cache.objs[max_index] = o;
 
-        last->next = NULL;
-        last->prev = NULL;
-        Free(last);
+    } else {
+        proxy_cache.objs[proxy_cache.num] = o;
+        proxy_cache.num++;
     }
-
-    o->next = proxy_cache.head->next;
-    o->prev = proxy_cache.head;
-    proxy_cache.head->next->prev = o;
-    proxy_cache.head->next = o;
-    cacheSize += o->respBodyLen;
 }
 
 void replaceHTTPVersion(char *buf) {
